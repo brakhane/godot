@@ -725,7 +725,6 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 				return NULL;
 
 			expr=op;
-
 		} else {
 
 			//find list [ or find dictionary {
@@ -830,11 +829,21 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 				//indexing using "[]"
 				OperatorNode * op = alloc_node<OperatorNode>();
 				op->op=OperatorNode::OP_INDEX;
-
 				tokenizer->advance(1);
 
-				Node *subexpr = _parse_expression(op,p_static);
-				if (!subexpr) {
+				Node* subexpr = _parse_expression(op,p_static);
+
+				// possible slice indexing (array[start:stop:step])
+				if (tokenizer->get_token() == GDTokenizer::TK_COLON) {
+					SliceNode *slice = alloc_node<SliceNode>();
+
+					slice->elements[0] = subexpr;
+					for(int i=1; i<3 && tokenizer->get_token() == GDTokenizer::TK_COLON; i++) {
+						tokenizer->advance();
+						slice->elements[i] = _parse_expression(op, p_static); // may be NULL
+					}
+					subexpr = slice;
+				} else if (!subexpr) {
 					return NULL;
 				}
 

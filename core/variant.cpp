@@ -35,6 +35,12 @@
 #include "core_string_names.h"
 #include "variant_parser.h"
 
+//FIXME
+struct Slice {
+	Variant *start, *stop, *step;
+	Slice(Variant *start, Variant *stop, Variant *step): start(start), stop(stop), step(step) {}
+};
+
 
 String Variant::get_type_name(Variant::Type p_type) {
 
@@ -187,6 +193,9 @@ String Variant::get_type_name(Variant::Type p_type) {
 			return "ColorArray";
 
 		} break;
+		case SLICE: {
+			return "Slice";
+		}
 		default: {}
 		}
 
@@ -320,6 +329,7 @@ bool Variant::can_convert(Variant::Type p_type_from,Variant::Type p_type_to) {
 
 			valid_types=valid;
 		} break;
+		case SLICE:
 		case OBJECT: {
 
 			static const Type valid[]={
@@ -570,6 +580,7 @@ bool Variant::can_convert_strict(Variant::Type p_type_from,Variant::Type p_type_
 
 			valid_types=valid;
 		} break;
+		case SLICE:
 		case OBJECT: {
 
 			static const Type valid[]={
@@ -2150,6 +2161,12 @@ Variant::operator IP_Address() const {
 	return IP_Address( operator String() );
 }
 
+Variant::operator Slice() const {
+	if (type == SLICE) {
+		return *_data._slice;
+	}
+	return Slice(NULL, NULL, NULL); //FIXME
+}
 Variant::Variant(bool p_bool) {
 
 	type=BOOL;

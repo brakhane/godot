@@ -69,6 +69,7 @@ bool Variant::booleanize(bool &r_valid) const {
 		case VECTOR2_ARRAY:
 		case VECTOR3_ARRAY:
 		case COLOR_ARRAY:
+		case SLICE:
 			r_valid=false;
 			return false;
 			default: {}

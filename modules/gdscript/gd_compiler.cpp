@@ -353,6 +353,34 @@ int GDCompiler::_parse_expression(CodeGen& codegen,const GDParser::Node *p_expre
 			return dst_addr;
 
 		} break;
+	    case GDParser::Node::TYPE_SLICE: {
+			const GDParser::SliceNode *sn = static_cast<const GDParser::SliceNode*>(p_expression);
+			Vector<int> values;
+
+			int slevel = p_stack_level;
+
+			for(int i=0; i<3; i++) {
+
+				int ret = _parse_expression(codegen, sn->elements[i], slevel);
+				if (ret<0)
+					return ret;
+				if (ret&GDFunction::ADDR_TYPE_STACK<<GDFunction::ADDR_BITS) {
+					slevel++;
+					codegen.alloc_stack(slevel);
+				}
+
+				values.push_back(ret);
+			}
+
+			codegen.opcodes.push_back(GDFunction::OPCODE_SLICE);
+			for(int i=0; i<3; i++)
+				codegen.opcodes.push_back(values[i]);
+
+			int dst_addr=(p_stack_level)|(GDFunction::ADDR_TYPE_STACK<<GDFunction::ADDR_BITS);
+			codegen.opcodes.push_back(dst_addr); // append the stack level as destination address of the opcode
+			codegen.alloc_stack(p_stack_level);
+			return dst_addr;
+		} break;
 		case GDParser::Node::TYPE_OPERATOR: {
 			//hell breaks loose
 
@@ -570,7 +598,6 @@ int GDCompiler::_parse_expression(CodeGen& codegen,const GDParser::Node *p_expre
 							StringName name = static_cast<const GDParser::ConstantNode*>(on->arguments[1])->value;
 							index=codegen.get_name_map_pos(name);
 							named=true;
-
 						} else {
 							//regular indexing
 							if (from&GDFunction::ADDR_TYPE_STACK<<GDFunction::ADDR_BITS) {

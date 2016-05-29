@@ -62,6 +62,8 @@ class Control; // helper
 struct PropertyInfo;
 struct MethodInfo;
 
+//FIXME
+struct Slice;
 
 typedef DVector<uint8_t> ByteArray;
 typedef DVector<int> IntArray;
@@ -115,6 +117,8 @@ public:
 		VECTOR3_ARRAY,
 		COLOR_ARRAY,
 
+		SLICE,
+
 		VARIANT_MAX
 
 	};
@@ -150,6 +154,7 @@ private:
 		RefPtr *_resource;
 		InputEvent *_input_event;
 		Image *_image;
+		Slice * _slice;
 		void *_ptr; //generic pointer
 		uint8_t _mem[sizeof(ObjData) > (sizeof(real_t)*4) ? sizeof(ObjData) : (sizeof(real_t)*4)];
 	} _data;
@@ -178,7 +183,7 @@ public:
 
 	bool is_ref() const;
 	_FORCE_INLINE_ bool is_num() const { return type==INT || type==REAL; };
-	_FORCE_INLINE_ bool is_array() const { return type>=ARRAY; };
+	_FORCE_INLINE_ bool is_array() const { return type>=ARRAY && type<=COLOR_ARRAY; };
 	bool is_shared() const;
 	bool is_zero() const;
 	bool is_one() const;
@@ -254,7 +259,7 @@ public:
 	operator Orientation() const;
 
 	operator IP_Address() const;
-
+	operator Slice() const;
 
 	Variant(bool p_bool);
 	Variant(signed int p_int); // real one

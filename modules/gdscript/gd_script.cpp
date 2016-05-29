@@ -34,6 +34,14 @@
 #include "io/file_access_encrypted.h"
 #include "os/os.h"
 
+	printf("BYTECODE\n");
+	for(int i=0; i<_code_size; i++) {
+		printf("%i ", _code_ptr[i]);
+	}
+	printf("\n");
+		printf("OPCODE %i\n", last_opcode);
+				printf("XXX");
+				printf("ASD");
 ///////////////////////////
 
 GDNativeClass::GDNativeClass(const StringName& p_name) {
