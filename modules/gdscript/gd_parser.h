@@ -56,6 +56,7 @@ public:
 			TYPE_ASSERT,
 			TYPE_BREAKPOINT,
 			TYPE_NEWLINE,
+			TYPE_SLICE,
 		};
 
 		Node * next;
@@ -285,6 +286,10 @@ public:
 		NewLineNode() { type=TYPE_NEWLINE; }
 	};
 
+	struct SliceNode : public Node {
+		Node* elements[3]; // start, stop, step
+		SliceNode(): elements() { type=TYPE_SLICE;}
+	};
 
 	struct Expression {
 

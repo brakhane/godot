@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "variant.h"
+#include "slice.h"
 #include "object.h"
 #include "os/os.h"
 #include "core_string_names.h"
@@ -904,6 +905,11 @@ static void _call_##m_type##_##m_method(Variant& r_ret,Variant& p_self,const Var
 		r_ret=Image(*p_args[0],*p_args[1],*p_args[2],Image::Format(p_args[3]->operator int()));
 	}
 
+	static void Slice_init3(Variant& r_ret, const Variant** p_args) {
+
+		r_ret=Slice(*p_args[0], *p_args[1], *p_args[2]);
+	}
+
 	static void add_constructor(VariantConstructFunc p_func,const Variant::Type p_type,
 			const String& p_name1="", const Variant::Type p_type1=Variant::NIL,
 			const String& p_name2="", const Variant::Type p_type2=Variant::NIL,
@@ -1283,8 +1289,6 @@ int Variant::get_numeric_constant_value(Variant::Type p_type, const StringName& 
 	ERR_FAIL_COND_V(!E,0);
 	return E->get();
 }
-
-
 
 void register_variant_methods() {
 
@@ -1703,6 +1707,8 @@ _VariantCall::addfunc(Variant::m_vtype,Variant::m_ret,_SCS(#m_method),VCALL(m_cl
 	_VariantCall::add_constructor(_VariantCall::Transform_init2,Variant::TRANSFORM,"basis",Variant::MATRIX3,"origin",Variant::VECTOR3);
 
 	_VariantCall::add_constructor(_VariantCall::Image_init1,Variant::IMAGE,"width",Variant::INT,"height",Variant::INT,"mipmaps",Variant::BOOL,"format",Variant::INT);
+
+	_VariantCall::add_constructor(_VariantCall::Slice_init3, Variant::SLICE,"start",Variant::NIL,"stop",Variant::NIL,"step",Variant::NIL);
 
 	/* REGISTER CONSTANTS */
 

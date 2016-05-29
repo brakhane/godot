@@ -950,6 +950,9 @@ static String _encode_variant(const Variant& p_variant) {
 			str+="]";
 			return str;
 		} break;
+		case Variant::SLICE: {
+			throw 42;
+		}
 		case Variant::DICTIONARY: {
 			Dictionary d = p_variant;
 			String str="{";

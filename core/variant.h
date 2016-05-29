@@ -56,6 +56,7 @@
 
 class RefPtr;
 class Object;
+struct Slice;
 class Node; // helper
 class Control; // helper
 
@@ -115,6 +116,8 @@ public:
 		VECTOR3_ARRAY,
 		COLOR_ARRAY,
 
+		SLICE,
+
 		VARIANT_MAX
 
 	};
@@ -123,6 +126,7 @@ private:
 
 
 	friend class _VariantCall;
+	friend class _VariantOp;
 	// Variant takes 20 bytes when real_t is float, and 36 if double
 	// it only allocates extra memory for aabb/matrix.
 
@@ -150,6 +154,7 @@ private:
 		RefPtr *_resource;
 		InputEvent *_input_event;
 		Image *_image;
+		Slice * _slice;
 		void *_ptr; //generic pointer
 		uint8_t _mem[sizeof(ObjData) > (sizeof(real_t)*4) ? sizeof(ObjData) : (sizeof(real_t)*4)];
 	} _data;
@@ -178,7 +183,7 @@ public:
 
 	bool is_ref() const;
 	_FORCE_INLINE_ bool is_num() const { return type==INT || type==REAL; };
-	_FORCE_INLINE_ bool is_array() const { return type>=ARRAY; };
+	_FORCE_INLINE_ bool is_array() const { return type>=ARRAY && type<=COLOR_ARRAY; };
 	bool is_shared() const;
 	bool is_zero() const;
 	bool is_one() const;
@@ -254,7 +259,7 @@ public:
 	operator Orientation() const;
 
 	operator IP_Address() const;
-
+	operator Slice() const;
 
 	Variant(bool p_bool);
 	Variant(signed int p_int); // real one
@@ -317,6 +322,7 @@ public:
 	Variant(const Vector<Vector2>& p_array); // helper
 	Variant(const DVector<Vector2>& p_array); // helper
 
+	Variant(const Slice& p_slice);
 	Variant(const IP_Address& p_address);
 
 
@@ -399,8 +405,8 @@ public:
 	void set_named(const StringName& p_index, const Variant& p_value, bool *r_valid=NULL);
 	Variant get_named(const StringName& p_index, bool *r_valid=NULL) const;
 
-	void set(const Variant& p_index, const Variant& p_value, bool *r_valid=NULL);
-	Variant get(const Variant& p_index, bool *r_valid=NULL) const;
+	void set(const Variant& p_index, const Variant& p_value, bool *r_valid=NULL, String *err_text=NULL);
+	Variant get(const Variant& p_index, bool *r_valid=NULL, String *err_text=NULL) const;
 	bool in(const Variant& p_index, bool *r_valid=NULL) const;
 
 	bool iter_init(Variant& r_iter,bool &r_valid) const;

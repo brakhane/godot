@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "variant.h"
+#include "slice.h"
 #include "resource.h"
 #include "print_string.h"
 #include "scene/main/node.h"
@@ -34,7 +35,6 @@
 #include "io/marshalls.h"
 #include "core_string_names.h"
 #include "variant_parser.h"
-
 
 String Variant::get_type_name(Variant::Type p_type) {
 
@@ -187,6 +187,9 @@ String Variant::get_type_name(Variant::Type p_type) {
 			return "ColorArray";
 
 		} break;
+		case SLICE: {
+			return "Slice";
+		} break;
 		default: {}
 		}
 
@@ -320,6 +323,7 @@ bool Variant::can_convert(Variant::Type p_type_from,Variant::Type p_type_to) {
 
 			valid_types=valid;
 		} break;
+		case SLICE:
 		case OBJECT: {
 
 			static const Type valid[]={
@@ -570,6 +574,7 @@ bool Variant::can_convert_strict(Variant::Type p_type_from,Variant::Type p_type_
 
 			valid_types=valid;
 		} break;
+		case SLICE:
 		case OBJECT: {
 
 			static const Type valid[]={
@@ -1111,6 +1116,9 @@ void Variant::reference(const Variant& p_variant) {
 			memnew_placement( _data._mem, DVector<Color> ( *reinterpret_cast<const DVector<Color>*>(p_variant._data._mem) ) );
 
 		} break;
+		case SLICE: {
+			_data._slice = memnew( Slice( *p_variant._data._slice ) );
+		} break;
 		default: {}
 	}
 
@@ -1239,6 +1247,9 @@ void Variant::clear() {
 			reinterpret_cast< DVector<Color>* >(_data._mem)->~DVector<Color>();
 
 		} break;
+		case SLICE: {
+			memdelete( _data._slice );
+		}
 		default: {} /* not needed */
 	}
 
@@ -2156,6 +2167,15 @@ Variant::operator IP_Address() const {
 	return IP_Address( operator String() );
 }
 
+Variant::operator Slice() const {
+
+	if (type == SLICE) {
+		return *_data._slice;
+	}
+	Variant nil;
+	return Slice(nil, nil, nil);
+}
+
 Variant::Variant(bool p_bool) {
 
 	type=BOOL;
@@ -2615,6 +2635,16 @@ Variant::Variant(const Vector<Color>& p_array) {
 	*this=v;
 }
 
+Variant::Variant(const Slice& p_slice) {
+
+	type=SLICE;
+    _data._slice = memnew( Slice(p_slice) );
+	printf("this %p slice is %p with start,stop,step=%i,%i,%i***\n", this, _data._slice,
+		   int(_data._slice->start),
+		   int(_data._slice->stop),
+		   int(_data._slice->step));
+}
+
 void Variant::operator=(const Variant& p_variant) {
 
 	reference(p_variant);
@@ -2891,6 +2921,12 @@ uint32_t Variant::hash() const {
 
 			return hash;
 
+		} break;
+		case SLICE: {
+			uint32_t hash = hash_djb2_one_32(_data._slice->start);
+			hash = hash_djb2_one_32(_data._slice->stop, hash);
+			hash = hash_djb2_one_32(_data._slice->step, hash);
+			return hash;
 		} break;
 		default: {}
 

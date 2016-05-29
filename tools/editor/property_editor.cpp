@@ -45,6 +45,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/main/viewport.h"
 #include "editor_file_system.h"
+#include "slice.h"
 
 void CustomPropertyEditor::_notification(int p_what) {
 
@@ -811,6 +812,18 @@ bool CustomPropertyEditor::edit(Object* p_owner,const String& p_name,Variant::Ty
 
 
 		} break;
+		case Variant::SLICE: {
+
+			List<String> names;
+			names.push_back("start");
+			names.push_back("stop");
+			names.push_back("step");
+			config_value_editors(3,3,30,names);
+			Slice slice=v;
+			value_editor[0]->set_text( String::num(slice.start) );
+			value_editor[1]->set_text( String::num(slice.stop) );
+			value_editor[2]->set_text( String::num(slice.step) );
+		} break;
 		default: {}
 	}
 
@@ -1567,6 +1580,23 @@ void CustomPropertyEditor::_modified(String p_string) {
 
 
 		} break;
+		case Variant::SLICE: {
+
+		    int start, stop, step;
+			if (evaluator) {
+				start=evaluator->eval(value_editor[0]->get_text());
+				stop=evaluator->eval(value_editor[1]->get_text());
+				step=evaluator->eval(value_editor[2]->get_text());
+			} else {
+				start=value_editor[0]->get_text().to_int();
+				stop=value_editor[1]->get_text().to_int();
+				step=value_editor[2]->get_text().to_int();
+			}
+			v=Slice(start, stop, step);
+			emit_signal("variant_changed");
+
+
+		} break;
 		default: {}
 	}
 
@@ -1586,6 +1616,7 @@ void CustomPropertyEditor::_focus_enter() {
 		case Variant::VECTOR2:
 		case Variant::RECT2:
 		case Variant::VECTOR3:
+		case Variant::SLICE:
 		case Variant::PLANE:
 		case Variant::QUAT:
 		case Variant::_AABB:
@@ -1611,6 +1642,7 @@ void CustomPropertyEditor::_focus_exit() {
 		case Variant::VECTOR2:
 		case Variant::RECT2:
 		case Variant::VECTOR3:
+		case Variant::SLICE:
 		case Variant::PLANE:
 		case Variant::QUAT:
 		case Variant::_AABB:
@@ -3234,6 +3266,13 @@ void PropertyEditor::update_tree() {
 					item->set_icon( 0, get_icon("Color","EditorIcons") );
 
 
+			} break;
+			case Variant::SLICE: {
+				item->set_cell_mode( 1, TreeItem::CELL_MODE_CUSTOM );
+				item->set_editable( 1, true );
+				Variant v = obj->get(p.name);
+				Slice s = v;
+				item->set_text(1,"Slice(" + String(s.start) + ", " + String(s.stop) + ", " + String(s.step) + ")");
 			} break;
 			case Variant::VECTOR2: {
 

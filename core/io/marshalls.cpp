@@ -784,6 +784,17 @@ Error decode_variant(Variant& r_variant,const uint8_t *p_buffer, int p_len,int *
 			r_variant=carray;
 
 		} break;
+		case Variant::SLICE: {
+			ERR_FAIL_COND_V(len<3*4, ERR_INVALID_DATA);
+			uint32_t start = decode_uint32(buf);
+			uint32_t stop = decode_uint32(buf+4);
+			uint32_t step = decode_uint32(buf+8);
+			buf += 3*4;
+			len -= 3*4;
+			//FIXME
+			//Slice slice(start, stop, step);
+			//r_variant = slice;
+		} break;
 		default: { ERR_FAIL_V(ERR_BUG); }
 	}
 
@@ -1407,6 +1418,17 @@ Error encode_variant(const Variant& p_variant, uint8_t *r_buffer, int &r_len) {
 
 			r_len+=4*4*len;
 
+		} break;
+		case Variant::SLICE: {
+			//FIXME
+			/*Slice slice = p_variant;
+			if (buf) {
+				//FIXME: must be signed and support NIL
+				encode_uint32(slice.start, &buf[0]);
+				encode_uint32(slice.stop, &buf[4]);
+				encode_uint32(slice.step, &buf[8]);
+				}*/
+			r_len += 3*4;
 		} break;
 		default: { ERR_FAIL_V(ERR_BUG); }
 	}
