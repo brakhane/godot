@@ -53,6 +53,7 @@
 #include "io/ip_address.h"
 #include "dictionary.h"
 #include "array.h"
+#include "slice.h"
 
 class RefPtr;
 class Object;
@@ -61,9 +62,6 @@ class Control; // helper
 
 struct PropertyInfo;
 struct MethodInfo;
-
-//FIXME
-struct Slice;
 
 typedef DVector<uint8_t> ByteArray;
 typedef DVector<int> IntArray;
@@ -322,6 +320,7 @@ public:
 	Variant(const Vector<Vector2>& p_array); // helper
 	Variant(const DVector<Vector2>& p_array); // helper
 
+	Variant(const Slice& p_slice);
 	Variant(const IP_Address& p_address);
 
 

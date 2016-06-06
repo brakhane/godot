@@ -372,7 +372,9 @@ int GDCompiler::_parse_expression(CodeGen& codegen,const GDParser::Node *p_expre
 				values.push_back(ret);
 			}
 
-			codegen.opcodes.push_back(GDFunction::OPCODE_SLICE);
+			codegen.opcodes.push_back(GDFunction::OPCODE_CONSTRUCT);
+			codegen.opcodes.push_back(Variant::SLICE); //type
+			codegen.opcodes.push_back(3); // number of arguments
 			for(int i=0; i<3; i++)
 				codegen.opcodes.push_back(values[i]);
 

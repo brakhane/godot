@@ -882,6 +882,13 @@ static void _call_##m_type##_##m_method(Variant& r_ret,Variant& p_self,const Var
 		r_ret=Image(*p_args[0],*p_args[1],*p_args[2],Image::Format(p_args[3]->operator int()));
 	}
 
+	static void Slice_init3(Variant& r_ret, const Variant** p_args) {
+
+		printf("creating slice with %i %i %i\n", (int)*p_args[0], (int)*p_args[1], (int)*p_args[2]);
+		r_ret=Slice(*p_args[0], *p_args[1], *p_args[2]);
+		printf("created --- %p with slice %p\n", &r_ret, r_ret._data._slice);
+	}
+
 	static void add_constructor(VariantConstructFunc p_func,const Variant::Type p_type,
 			const String& p_name1="", const Variant::Type p_type1=Variant::NIL,
 			const String& p_name2="", const Variant::Type p_type2=Variant::NIL,
@@ -1634,6 +1641,8 @@ _VariantCall::addfunc(Variant::m_vtype,Variant::m_ret,_SCS(#m_method),VCALL(m_cl
 	_VariantCall::add_constructor(_VariantCall::Transform_init2,Variant::TRANSFORM,"basis",Variant::MATRIX3,"origin",Variant::VECTOR3);
 
 	_VariantCall::add_constructor(_VariantCall::Image_init1,Variant::IMAGE,"width",Variant::INT,"height",Variant::INT,"mipmaps",Variant::BOOL,"format",Variant::INT);
+
+	_VariantCall::add_constructor(_VariantCall::Slice_init3, Variant::SLICE,"start",Variant::INT,"stop",Variant::INT,"step",Variant::INT);
 
 	/* REGISTER CONSTANTS */
 

@@ -969,29 +969,84 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 	return get(p_index.operator String(),r_valid);
 }
 
+#define DEFAULT_OP_ARRAY_SET(m_name, m_type, skip_test, cmd)			\
+	case m_name: {														\
+		skip_test;														\
+																		\
+		if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) { \
+			int index = p_index;										\
+			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
+																		\
+			if (index<0)												\
+				index += arr->size();									\
+			if (index>=0 && index<arr->size()) {						\
+				valid=true;												\
+				cmd;													\
+			}															\
+		}																\
+		if (p_index.get_type()==Variant::SLICE) {						\
+			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
+			Slice slice = p_index;										\
+			Array values = p_value;										\
+																		\
+			int len = arr->size();										\
+			int start = slice.start;									\
+			int stop = slice.stop;										\
+			int step = slice.step;										\
+			if (start<0)												\
+				start += len;											\
+			if (stop<0)													\
+				stop += len;											\
+																		\
+			int count = (stop - start + step - 1) / step;				\
+			if (count<0)												\
+				count = 0;												\
+																		\
+			if (start>=0 && start<len &&								\
+				stop>=0 && stop<len &&									\
+				values.size() == count) {								\
+				valid=true;												\
+				for(int i=start, o=0; i<stop; i += step, o += 1) {		\
+					arr->set(i, values[o]);								\
+				}														\
+				return;													\
+			}															\
+		}																\
+	} break;
 
-#define DEFAULT_OP_ARRAY_CMD(m_name, m_type, skip_test, cmd)\
-	case m_name: {\
-		skip_test;\
-\
-		if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) {\
-			int index = p_index;\
-			m_type *arr=reinterpret_cast<m_type* >(_data._mem);\
-\
-			if (index<0)\
-				index += arr->size();\
-			if (index>=0 && index<arr->size()) {\
-				valid=true;\
-				cmd;\
-			}\
-		}\
+#define DEFAULT_OP_ARRAY_GET(m_name, m_type, skip_test, cmd)			\
+	case m_name: {														\
+		skip_test;														\
+																		\
+		if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) { \
+			int index = p_index;										\
+			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
+																		\
+			if (index<0)												\
+				index += arr->size();									\
+			if (index>=0 && index<arr->size()) {						\
+				valid=true;												\
+				cmd;													\
+			}															\
+		}																\
+		if (p_index.get_type()==Variant::SLICE) {						\
+			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
+			Slice slice = p_index;										\
+			Array res(true);											\
+			res.resize((slice.stop - slice.start + slice.step -1) / slice.step); \
+			for (int i=slice.start, o=0; i<slice.stop; i += slice.step, o += 1) { \
+				res[o] = arr->get(i);									\
+			}															\
+			valid=true;													\
+			return Variant(res);										\
+		}																\
 	} break;
 
 #define DEFAULT_OP_DVECTOR_SET(m_name, dv_type, skip_cond)\
-	DEFAULT_OP_ARRAY_CMD(m_name, DVector<dv_type>, if(skip_cond) return;, arr->set(index, p_value);return)
+	DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, if(skip_cond) return;, arr->set(index, p_value);return)
 
 #define DEFAULT_OP_DVECTOR_GET(m_name, dv_type)\
-	DEFAULT_OP_ARRAY_CMD(m_name, const DVector<dv_type>, 0, return arr->get(index))
+	DEFAULT_OP_ARRAY_GET(m_name, const DVector<dv_type>, 0, return arr->get(index))
 
 void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid) {
 
@@ -1825,7 +1880,7 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid)
 			valid=true; //always valid, i guess? should this really be ok?
 			return;
 		} break;		// 20
-		DEFAULT_OP_ARRAY_CMD(ARRAY, Array, ;, (*arr)[index]=p_value;return)
+		DEFAULT_OP_ARRAY_SET(ARRAY, Array, ;, (*arr)[index]=p_value;return)
 		DEFAULT_OP_DVECTOR_SET(RAW_ARRAY, uint8_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 		DEFAULT_OP_DVECTOR_SET(INT_ARRAY, int, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 		DEFAULT_OP_DVECTOR_SET(REAL_ARRAY, real_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
@@ -2409,7 +2464,7 @@ Variant Variant::get(const Variant& p_index, bool *r_valid) const {
 				return *res;
 			}
 		} break;		// 20
-		DEFAULT_OP_ARRAY_CMD(ARRAY, const Array, 0, return (*arr)[index])
+		DEFAULT_OP_ARRAY_GET(ARRAY, const Array, 0, return (*arr)[index])
 		DEFAULT_OP_DVECTOR_GET(RAW_ARRAY, uint8_t)
 		DEFAULT_OP_DVECTOR_GET(INT_ARRAY, int)
 		DEFAULT_OP_DVECTOR_GET(REAL_ARRAY, real_t)

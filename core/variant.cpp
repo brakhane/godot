@@ -35,13 +35,6 @@
 #include "core_string_names.h"
 #include "variant_parser.h"
 
-//FIXME
-struct Slice {
-	Variant *start, *stop, *step;
-	Slice(Variant *start, Variant *stop, Variant *step): start(start), stop(stop), step(step) {}
-};
-
-
 String Variant::get_type_name(Variant::Type p_type) {
 
 	switch( p_type ) {
@@ -195,7 +188,7 @@ String Variant::get_type_name(Variant::Type p_type) {
 		} break;
 		case SLICE: {
 			return "Slice";
-		}
+		} break;
 		default: {}
 		}
 
@@ -1122,6 +1115,9 @@ void Variant::reference(const Variant& p_variant) {
 			memnew_placement( _data._mem, DVector<Color> ( *reinterpret_cast<const DVector<Color>*>(p_variant._data._mem) ) );
 
 		} break;
+		case SLICE: {
+			_data._slice = memnew( Slice( *p_variant._data._slice ) );
+		} break;
 		default: {}
 	}
 
@@ -1250,6 +1246,9 @@ void Variant::clear() {
 			reinterpret_cast< DVector<Color>* >(_data._mem)->~DVector<Color>();
 
 		} break;
+		case SLICE: {
+			memdelete( _data._slice );
+		}
 		default: {} /* not needed */
 	}
 
@@ -2162,11 +2161,14 @@ Variant::operator IP_Address() const {
 }
 
 Variant::operator Slice() const {
+
 	if (type == SLICE) {
 		return *_data._slice;
 	}
-	return Slice(NULL, NULL, NULL); //FIXME
+	Variant nil;
+	return Slice(nil, nil, nil);
 }
+
 Variant::Variant(bool p_bool) {
 
 	type=BOOL;
@@ -2624,6 +2626,13 @@ Variant::Variant(const Vector<Color>& p_array) {
 	for (int i=0;i<len;i++)
 		v.set(i,p_array[i]);
 	*this=v;
+}
+
+Variant::Variant(const Slice& p_slice) {
+
+	type=SLICE;
+    _data._slice = memnew( Slice(p_slice) );
+	printf("this %p slice is %p***\n", this, _data._slice);
 }
 
 void Variant::operator=(const Variant& p_variant) {
