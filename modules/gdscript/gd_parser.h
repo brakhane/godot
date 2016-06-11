@@ -287,7 +287,7 @@ public:
 	};
 
 	struct SliceNode : public Node {
-		Node *elements[3] = {NULL,NULL,NULL}; // start, stop, step
+		Node* elements[3]; // start, stop, step
 		SliceNode() { type=TYPE_SLICE; }
 	};
 

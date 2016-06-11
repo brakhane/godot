@@ -30,6 +30,131 @@
 #include "object.h"
 #include "script_language.h"
 #include "core_string_names.h"
+
+template<typename T>
+_FORCE_INLINE_ T _create_instance() {
+	return T();
+};
+
+template<>
+_FORCE_INLINE_ Array _create_instance() {
+	return Array(true);
+}
+
+class _VariantOp {
+public:
+
+	template <typename T>
+	inline Variant static get_array(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
+		switch(p_index.get_type()) {
+			case Variant::INT:
+			case Variant::REAL: {
+				int index = p_index;
+				const T* arr = reinterpret_cast<const T*>(variant._data._mem);
+
+				if (index<0)
+					index += arr->size();
+				if (index>=0 && index<arr->size()) {
+					valid=true;
+					return arr->get(index);
+				}
+			} break;
+
+			case Variant::SLICE: {
+				const T* arr = reinterpret_cast<const T*>(variant._data._mem);
+				Slice slice = p_index;
+
+				int len = arr->size();
+				int start = slice.start;
+				int stop = slice.stop;
+				int step = slice.step;
+				if (start<0)
+					start += len;
+				if (stop<0)
+					stop += len;
+
+				int count = (stop - start + step - 1) / step;
+				if (count<0)
+					count = 0;
+
+				T res = _create_instance<T>();
+				res.resize(count);
+				// TODO: Write object
+				for (int i=start, o=0; i<stop; i += step, o += 1) {
+					res.set(o, (*arr)[i]);
+				}
+				valid=true;
+				return res;
+			} break;
+		default: break;
+		}
+		return Variant();
+	}
+
+	template <typename T>
+	inline static void set_array(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
+		switch(p_index.get_type()) {
+			case Variant::INT:
+			case Variant::REAL: {
+
+				int index = p_index;
+
+				T* arr = reinterpret_cast<T*>(variant._data._mem);
+
+				if (index<0)
+					index += arr->size();
+				if (index>=0 && index<arr->size()) {
+					valid=true;
+					arr->set(index, p_value);
+				}
+			} break;
+
+			case Variant::SLICE: {
+				if (!p_value.is_array()) {
+					if (err_text) {
+						*err_text = "A slice can only be set to an array, got " + Variant::get_type_name(p_value.get_type()) + " instead.";
+						return;
+					}
+				}
+
+				T* arr = reinterpret_cast<T*>(variant._data._mem);
+				Slice slice = p_index;
+				T values = p_value;
+
+				int len = arr->size();
+				int start = slice.start;
+				int stop = slice.stop;
+				int step = slice.step;
+				if (start<0)
+					start += len;
+				if (stop<0)
+					stop += len;
+
+				int count = (stop - start + step - 1) / step;
+				if (count<0)
+					count = 0;
+
+				if (values.size() != count) {
+					if (err_text)
+						*err_text = "Cannot assign an array of length " + itos(values.size()) + " to a slice of different length " + itos(count);
+					return;
+				}
+
+				if (start>=0 && start<len &&
+					stop>=0 && stop<len) {
+					valid=true;
+					for(int i=start, o=0; i<stop; i += step, o += 1) {
+						arr->set(i, values.get(o));
+					}
+				}
+			} break;
+		default: break;
+		}
+	}
+
+};
+
+
 Variant::operator bool() const {
 
 	bool b;
@@ -314,6 +439,12 @@ void Variant::evaluate(const Operator& p_op, const Variant& p_a, const Variant& 
 				DEFAULT_OP_ARRAY_EQ(VECTOR2_ARRAY,Vector3);
 				DEFAULT_OP_ARRAY_EQ(VECTOR3_ARRAY,Vector3);
 				DEFAULT_OP_ARRAY_EQ(COLOR_ARRAY,Color);
+				case SLICE: {
+					if (p_b.type != SLICE)
+						_RETURN( false );
+
+				    _RETURN ( p_a._data._slice == p_b._data._slice );
+				}
 
 				case VARIANT_MAX: {
 					r_valid=false;
@@ -969,198 +1100,28 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 	return get(p_index.operator String(),r_valid);
 }
 
-#define DEFAULT_OP_ARRAY_SETX(m_name, m_type, skip_test, cmd)			\
-	case m_name: {														\
-		skip_test;														\
-																		\
-		if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) { \
-			int index = p_index;										\
-			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
-																		\
-			if (index<0)												\
-				index += arr->size();									\
-			if (index>=0 && index<arr->size()) {						\
-				valid=true;												\
-				cmd;													\
-			}															\
-		}																\
-		if (p_index.get_type()==Variant::SLICE) {						\
-			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
-			Slice slice = p_index;										\
-			Array values = p_value;										\
-																		\
-			int len = arr->size();										\
-			int start = slice.start;									\
-			int stop = slice.stop;										\
-			int step = slice.step;										\
-			if (start<0)												\
-				start += len;											\
-			if (stop<0)													\
-				stop += len;											\
-																		\
-			int count = (stop - start + step - 1) / step;				\
-			if (count<0)												\
-				count = 0;												\
-																		\
-			if (start>=0 && start<len &&								\
-				stop>=0 && stop<len &&									\
-				values.size() == count) {								\
-				valid=true;												\
-				for(int i=start, o=0; i<stop; i += step, o += 1) {		\
-					arr->set(i, values[o]);								\
-				}														\
-				return;													\
-			}															\
-		}																\
-	} break;
-
-#define DEFAULT_OP_ARRAY_SET(m_name, m_type, skip_test, cmd)			\
-	case m_name: {														\
-		skip_test;														\
-																		\
-		_set_array<m_type>(*this, valid, p_index, p_value);				\
-	} break;
-
-template <typename T>
-inline void _set_array(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value) {
-	switch(p_index.get_type()) {
-		case Variant::INT:
-		case Variant::REAL: {
-			int index = p_index;
-			T carr = variant;
-			T *arr = &carr;
-
-			if (index<0)
-				index += arr->size();
-			if (index>=0 && index<arr->size()) {
-				valid=true;
-				arr->set(index, p_value);
-			}
-		} break;
-
-		case Variant::SLICE: {
-			T carr = variant;
-			T *arr = &carr;
-			Slice slice = p_index;
-			T values = p_value;
-
-			int len = arr->size();
-			int start = slice.start;
-			int stop = slice.stop;
-			int step = slice.step;
-			if (start<0)
-				start += len;
-			if (stop<0)
-				stop += len;
-
-			int count = (stop - start + step - 1) / step;
-			if (count<0)
-				count = 0;
-
-			if (start>=0 && start<len &&
-				stop>=0 && stop<len &&
-				values.size() == count) {
-				valid=true;
-				for(int i=start, o=0; i<stop; i += step, o += 1) {
-					arr->set(i, values[o]);
-				}
- 			}
-		} break;
-	}
-}
-
-template <typename T>
-inline Variant _get_array(const Variant& variant, bool& valid, const Variant& p_index) {
-	switch(p_index.get_type()) {
-		case Variant::INT:
-		case Variant::REAL: {
-			int index = p_index;
-			T carr = variant;
-			T *arr = &carr;
-
-			if (index<0)
-				index += arr->size();
-			if (index>=0 && index<arr->size()) {
-				valid=true;
-				return arr->get(index);
-			}
-		} break;
-
-		case Variant::SLICE: {
-			T carr = variant;
-			T *arr = &carr;
-			Slice slice = p_index;
-
-			int len = arr->size();
-			int start = slice.start;
-			int stop = slice.stop;
-			int step = slice.step;
-			if (start<0)
-				start += len;
-			if (stop<0)
-				stop += len;
-
-			int count = (stop - start + step - 1) / step;
-			if (count<0)
-				count = 0;
-
-			if (start>=0 && start<len &&
-				stop>=0 && stop<len) {
-				Array res(true);
-				res.resize((slice.stop - slice.start + slice.step -1) / slice.step);
-				for (int i=slice.start, o=0; i<slice.stop; i += slice.step, o += 1) {
-					res[o] = arr->get(i);
-				}
-				valid=true;
-				return Variant(res);
-			}
-		} break;
-	}
-}
-
-
-#define DEFAULT_OP_ARRAY_GETX(m_name, m_type, skip_test, cmd)			\
-	case m_name: {														\
-		skip_test;														\
-																		\
-		if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) { \
-			int index = p_index;										\
-			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
-																		\
-			if (index<0)												\
-				index += arr->size();									\
-			if (index>=0 && index<arr->size()) {						\
-				valid=true;												\
-				cmd;													\
-			}															\
-		}																\
-		if (p_index.get_type()==Variant::SLICE) {						\
-			m_type *arr=reinterpret_cast<m_type* >(_data._mem);			\
-			Slice slice = p_index;										\
-			Array res(true);											\
-			res.resize((slice.stop - slice.start + slice.step -1) / slice.step); \
-			for (int i=slice.start, o=0; i<slice.stop; i += slice.step, o += 1) { \
-				res[o] = arr->get(i);									\
-			}															\
-			valid=true;													\
-			return Variant(res);										\
-		}																\
-	} break;
-
 #define DEFAULT_OP_ARRAY_GET(m_name, m_type, skip_test, cmd)	\
 	case m_name: {												\
 		skip_test;												\
-		Variant v = _get_array<m_type>(*this, valid, p_index); \
-		if (v) return v;										\
+		Variant v = _VariantOp::get_array<m_type>(*this, valid, p_index, err_text); \
+		return v;												\
+    } break;
+
+#define DEFAULT_OP_DVECTOR_GET(m_name, dv_type)						\
+	DEFAULT_OP_ARRAY_GET(m_name, DVector<dv_type>, 0, err_text);
+
+#define DEFAULT_OP_ARRAY_SET(m_name, m_type, skip_test, cmd)	\
+	case m_name: {												\
+		skip_test;												\
+		_VariantOp::set_array<m_type>(*this, valid, p_index, p_value, err_text);	\
 	} break;
 
-#define DEFAULT_OP_DVECTOR_SET(m_name, dv_type, skip_cond)\
-	DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, if(skip_cond) return;, arr->set(index, p_value);return)
 
-#define DEFAULT_OP_DVECTOR_GET(m_name, dv_type)\
-	DEFAULT_OP_ARRAY_GET(m_name, const DVector<dv_type>, 0, return arr->get(index))
+#define DEFAULT_OP_DVECTOR_SET(m_name, dv_type, skip_cond)	    \
+	DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, ;, arr->set(index, p_value);return)
+//DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, if(skip_cond) return;, arr->set(index, p_value);return)
 
-void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid) {
+void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid, String* err_text) {
 
 	static bool _dummy=false;
 
@@ -2005,7 +1966,7 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid)
 
 }
 
-Variant Variant::get(const Variant& p_index, bool *r_valid) const {
+Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) const {
 
 	static bool _dummy=false;
 
@@ -2576,7 +2537,7 @@ Variant Variant::get(const Variant& p_index, bool *r_valid) const {
 				return *res;
 			}
 		} break;		// 20
-		DEFAULT_OP_ARRAY_GET(ARRAY, const Array, 0, return (*arr)[index])
+		DEFAULT_OP_ARRAY_GET(ARRAY, Array, 0, return (*arr)[index])
 		DEFAULT_OP_DVECTOR_GET(RAW_ARRAY, uint8_t)
 		DEFAULT_OP_DVECTOR_GET(INT_ARRAY, int)
 		DEFAULT_OP_DVECTOR_GET(REAL_ARRAY, real_t)

@@ -884,9 +884,7 @@ static void _call_##m_type##_##m_method(Variant& r_ret,Variant& p_self,const Var
 
 	static void Slice_init3(Variant& r_ret, const Variant** p_args) {
 
-		printf("creating slice with %i %i %i\n", (int)*p_args[0], (int)*p_args[1], (int)*p_args[2]);
 		r_ret=Slice(*p_args[0], *p_args[1], *p_args[2]);
-		printf("created --- %p with slice %p\n", &r_ret, r_ret._data._slice);
 	}
 
 	static void add_constructor(VariantConstructFunc p_func,const Variant::Type p_type,
@@ -1250,8 +1248,6 @@ int Variant::get_numeric_constant_value(Variant::Type p_type, const StringName& 
 	ERR_FAIL_COND_V(!E,0);
 	return E->get();
 }
-
-
 
 void register_variant_methods() {
 

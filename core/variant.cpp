@@ -2632,7 +2632,7 @@ Variant::Variant(const Slice& p_slice) {
 
 	type=SLICE;
     _data._slice = memnew( Slice(p_slice) );
-	printf("this %p slice is %p***\n", this, _data._slice);
+	printf("this %p slice is %p with start,stop,step=%i,%i,%i***\n", this, _data._slice, _data._slice->start, _data._slice->stop, _data._slice->step);
 }
 
 void Variant::operator=(const Variant& p_variant) {
@@ -2911,6 +2911,12 @@ uint32_t Variant::hash() const {
 
 			return hash;
 
+		} break;
+		case SLICE: {
+			uint32_t hash = hash_djb2_one_32(_data._slice->start);
+			hash = hash_djb2_one_32(_data._slice->stop, hash);
+			hash = hash_djb2_one_32(_data._slice->step, hash);
+			return hash;
 		} break;
 		default: {}
 

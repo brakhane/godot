@@ -125,6 +125,7 @@ private:
 
 
 	friend class _VariantCall;
+	friend class _VariantOp;
 	// Variant takes 20 bytes when real_t is float, and 36 if double
 	// it only allocates extra memory for aabb/matrix.
 
@@ -403,8 +404,8 @@ public:
 	void set_named(const StringName& p_index, const Variant& p_value, bool *r_valid=NULL);
 	Variant get_named(const StringName& p_index, bool *r_valid=NULL) const;
 
-	void set(const Variant& p_index, const Variant& p_value, bool *r_valid=NULL);
-	Variant get(const Variant& p_index, bool *r_valid=NULL) const;
+	void set(const Variant& p_index, const Variant& p_value, bool *r_valid=NULL, String *err_text=NULL);
+	Variant get(const Variant& p_index, bool *r_valid=NULL, String *err_text=NULL) const;
 	bool in(const Variant& p_index, bool *r_valid=NULL) const;
 
 	bool iter_init(Variant& r_iter,bool &r_valid) const;

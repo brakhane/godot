@@ -803,6 +803,7 @@ void GDTokenizerText::_advance() {
 							{Variant::VECTOR2_ARRAY,"Vector2Array"},
 							{Variant::VECTOR3_ARRAY,"Vector3Array"},
 							{Variant::COLOR_ARRAY,"ColorArray"},
+							{Variant::SLICE,"Slice"},
 							{Variant::VARIANT_MAX,NULL},
 						};
 

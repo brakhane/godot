@@ -1320,6 +1320,20 @@ Error VariantParser::parse_value(Token& token,Variant &value,Stream *p_stream,in
 			value=arr;
 
 			return OK;
+		} else if (id=="Slice") {
+
+			Vector<int32_t> args;
+			Error err = _parse_construct<int32_t>(p_stream,args,line,r_err_str);
+			if (err)
+				return err;
+
+			if (args.size()!=3) {
+				r_err_str="Expected 3 arguments for constructor";
+			}
+
+			value=Slice(args[0],args[1],args[2]);
+
+			return OK;
 		} else if (id=="key") { // compatibility with engine.cfg
 
 			Vector<String> params;
@@ -2276,6 +2290,10 @@ Error VariantWriter::write(const Variant& p_variant, StoreStringFunc p_store_str
 			}
 			p_store_string_func(p_store_string_ud," )");
 
+		} break;
+		case Variant::SLICE: {
+			Slice slice = p_variant;
+			p_store_string_func(p_store_string_ud, "Slice( " + rtoss(slice.start) + ", " + rtoss(slice.stop) + ", " + rtoss(slice.step) + ")");
 		} break;
 		default: {}
 

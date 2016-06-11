@@ -416,16 +416,18 @@ Variant GDFunction::call(GDInstance *p_instance, const Variant **p_args, int p_a
 				GET_VARIANT_PTR(value,3);
 
 				bool valid;
-				dst->set(*index,*value,&valid);
+				dst->set(*index,*value,&valid,&err_text);
 
 				if (!valid) {
-					String v = index->operator String();
-					if (v!="") {
-						v="'"+v+"'";
-					} else {
-						v="of type '"+_get_var_type(index)+"'";
+					if (err_text.empty()) {
+						String v = index->operator String();
+						if (v!="") {
+							v="'"+v+"'";
+						} else {
+							v="of type '"+_get_var_type(index)+"'";
+						}
+						err_text="Invalid set index "+v+" (on base: '"+_get_var_type(dst)+"').";
 					}
-					err_text="Invalid set index "+v+" (on base: '"+_get_var_type(dst)+"').";
 					break;
 				}
 
@@ -442,19 +444,21 @@ Variant GDFunction::call(GDInstance *p_instance, const Variant **p_args, int p_a
 				bool valid;
 #ifdef DEBUG_ENABLED
 				//allow better error message in cases where src and dst are the same stack position
-				Variant ret = src->get(*index,&valid);
+				Variant ret = src->get(*index,&valid,&err_text);
 #else
-				*dst = src->get(*index,&valid);
+				*dst = src->get(*index,&valid,&err_text);
 
 #endif
 				if (!valid) {
-					String v = index->operator String();
-					if (v!="") {
-						v="'"+v+"'";
-					} else {
-						v="of type '"+_get_var_type(index)+"'";
+					if (err_text.empty()) {
+						String v = index->operator String();
+						if (v!="") {
+							v="'"+v+"'";
+						} else {
+							v="of type '"+_get_var_type(index)+"'";
+						}
+						err_text="Invalid get index "+v+" (on base: '"+_get_var_type(src)+"').";
 					}
-					err_text="Invalid get index "+v+" (on base: '"+_get_var_type(src)+"').";
 					break;
 				}
 #ifdef DEBUG_ENABLED
