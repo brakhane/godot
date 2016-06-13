@@ -43,9 +43,8 @@ _FORCE_INLINE_ Array _create_instance() {
 
 class _VariantOp {
 public:
-
 	template <typename T>
-	inline Variant static get_array(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
+	static Variant get_array(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
@@ -77,6 +76,7 @@ public:
 				if (count<0)
 					count = 0;
 
+
 				T res = _create_instance<T>();
 				res.resize(count);
 				// TODO: Write object
@@ -92,7 +92,7 @@ public:
 	}
 
 	template <typename T>
-	inline static void set_array(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
+	static void set_array(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
