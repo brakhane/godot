@@ -533,6 +533,7 @@ static _GlobalConstant _global_constants[]={
 	{"TYPE_VECTOR2_ARRAY",Variant::VECTOR2_ARRAY},
 	{"TYPE_VECTOR3_ARRAY",Variant::VECTOR3_ARRAY},
 	{"TYPE_COLOR_ARRAY",Variant::COLOR_ARRAY},
+    {"TYPE_SLICE",Variant::SLICE},
 	{"TYPE_MAX",Variant::VARIANT_MAX},
 	{NULL,0}
 

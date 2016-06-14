@@ -31,17 +31,25 @@
 #include "script_language.h"
 #include "core_string_names.h"
 
-template<typename T>
-_FORCE_INLINE_ T _create_instance() {
-	return T();
-};
-
-template<>
-_FORCE_INLINE_ Array _create_instance() {
-	return Array(true);
-}
 
 class _VariantOp {
+
+	template<typename T>
+	static _FORCE_INLINE_ T _create_instance() {
+		return T();
+	};
+
+	template<typename T>
+	static Variant get_val(const T& obj, const Variant& index) {
+		return obj.get(index);
+	}
+
+	template<typename T>
+	static void set_val(T& obj, const Variant index, const Variant& value, bool& valid) {
+		obj.set(index, value);
+		valid=true;
+	}
+
 public:
 	template <typename T>
 	static Variant get_array(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
@@ -55,7 +63,7 @@ public:
 					index += arr->size();
 				if (index>=0 && index<arr->size()) {
 					valid=true;
-					return arr->get(index);
+					return get_val(*arr, index);
 				}
 			} break;
 
@@ -81,9 +89,10 @@ public:
 				res.resize(count);
 				// TODO: Write object
 				for (int i=start, o=0; i<stop; i += step, o += 1) {
-					res.set(o, (*arr)[i]);
+					set_val(res, Variant(o), (*arr)[i], valid);
+					if (!valid)
+						return Variant();
 				}
-				valid=true;
 				return res;
 			} break;
 		default: break;
@@ -104,8 +113,7 @@ public:
 				if (index<0)
 					index += arr->size();
 				if (index>=0 && index<arr->size()) {
-					valid=true;
-					arr->set(index, p_value);
+					set_val(*arr, Variant(index), p_value, valid);
 				}
 			} break;
 
@@ -136,15 +144,16 @@ public:
 
 				if (values.size() != count) {
 					if (err_text)
-						*err_text = "Cannot assign an array of length " + itos(values.size()) + " to a slice of different length " + itos(count);
+						*err_text = "Cannot assign an array of length " + itos(values.size()) + " to a slice of length " + itos(count);
 					return;
 				}
 
 				if (start>=0 && start<len &&
 					stop>=0 && stop<len) {
-					valid=true;
 					for(int i=start, o=0; i<stop; i += step, o += 1) {
-						arr->set(i, values.get(o));
+						set_val(*arr, i, values.get(o), valid);
+						if (!valid)
+							break;
 					}
 				}
 			} break;
@@ -153,6 +162,32 @@ public:
 	}
 
 };
+
+template<>
+_FORCE_INLINE_ Array _VariantOp::_create_instance() {
+	return Array(true);
+}
+
+template<>
+_FORCE_INLINE_ Variant _VariantOp::get_val(const String& str, const Variant& index) {
+	return str.substr(index, 1);
+}
+
+template<>
+void _VariantOp::set_val(String& str, const Variant index, const Variant& value, bool& valid) {
+	int idx = index;
+	String chr;
+	if (value.type==Variant::INT || value.type==Variant::REAL) {
+		chr = String::chr(value);
+	} else if (value.type==Variant::STRING) {
+		chr = value;
+	} else {
+		valid = false;
+		return;
+	}
+	valid = true;
+	str = str.substr(0,idx)+chr+str.substr(idx+1, str.length());
+}
 
 
 Variant::operator bool() const {
@@ -1135,7 +1170,7 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 		case REAL: {  return;  } break;
 		case STRING: {
 
-
+			/*
 			if (p_index.type!=Variant::INT && p_index.type!=Variant::REAL)
 				return;
 
@@ -1161,8 +1196,9 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 			*str = str->substr(0,idx)+chr+str->substr(idx+1, len);
 			valid=true;
 			return;
-
-
+			*/
+			_VariantOp::set_array<String>(*this, valid, p_index, p_value, err_text);
+			return;
 		} break;
 		case VECTOR2: {
 
@@ -1980,7 +2016,7 @@ Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) co
 		case INT: {  return Variant();  } break;
 		case REAL: {  return Variant();  } break;
 		case STRING: {
-
+			/*
 			if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) {
 				//string index
 
@@ -1994,7 +2030,8 @@ Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) co
 					return str->substr(idx,1);
 				}
 			}
-
+			*/
+			return _VariantOp::get_array<String>(*this, valid, p_index, err_text);
 		} break;
 		case VECTOR2: {
 
@@ -2545,6 +2582,24 @@ Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) co
 		DEFAULT_OP_DVECTOR_GET(VECTOR2_ARRAY, Vector2)
 		DEFAULT_OP_DVECTOR_GET(VECTOR3_ARRAY, Vector3)
 		DEFAULT_OP_DVECTOR_GET(COLOR_ARRAY, Color)
+		case SLICE: {
+			if (p_index.get_type() == Variant::STRING) {
+				const String &str=*reinterpret_cast<const String*>(p_index._data._mem);
+				const Slice *slice = _data._slice;
+				if (str == "start") {
+					valid = true;
+					return Variant(slice->start);
+				}
+				if (str == "stop") {
+					valid = true;
+					return Variant(slice->stop);
+				}
+				if (str == "step") {
+					valid = true;
+					return Variant(slice->step);
+				}
+			}
+		}
 		default: return Variant();
 	}
 
