@@ -53,15 +53,16 @@
 #include "io/ip_address.h"
 #include "dictionary.h"
 #include "array.h"
-#include "slice.h"
 
 class RefPtr;
 class Object;
+struct Slice;
 class Node; // helper
 class Control; // helper
 
 struct PropertyInfo;
 struct MethodInfo;
+
 
 typedef DVector<uint8_t> ByteArray;
 typedef DVector<int> IntArray;

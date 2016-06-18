@@ -29,7 +29,7 @@
 #include "variant_parser.h"
 #include "io/resource_loader.h"
 #include "os/keyboard.h"
-
+#include "slice.h"
 
 
 CharType VariantParser::StreamFile::get_char() {
@@ -1321,7 +1321,7 @@ Error VariantParser::parse_value(Token& token,Variant &value,Stream *p_stream,in
 
 			return OK;
 		} else if (id=="Slice") {
-
+			/*FIXME
 			Vector<int32_t> args;
 			Error err = _parse_construct<int32_t>(p_stream,args,line,r_err_str);
 			if (err)
@@ -1332,7 +1332,8 @@ Error VariantParser::parse_value(Token& token,Variant &value,Stream *p_stream,in
 			}
 
 			value=Slice(args[0],args[1],args[2]);
-
+			*/
+			printf("DODODODODT  TODO !!!!! \n");
 			return OK;
 		} else if (id=="key") { // compatibility with engine.cfg
 
@@ -2293,7 +2294,7 @@ Error VariantWriter::write(const Variant& p_variant, StoreStringFunc p_store_str
 		} break;
 		case Variant::SLICE: {
 			Slice slice = p_variant;
-			p_store_string_func(p_store_string_ud, "Slice( " + rtoss(slice.start) + ", " + rtoss(slice.stop) + ", " + rtoss(slice.step) + ")");
+			p_store_string_func(p_store_string_ud, "Slice( " + String(slice.start) + ", " + String(slice.stop) + ", " + String(slice.step) + " )");
 		} break;
 		default: {}
 

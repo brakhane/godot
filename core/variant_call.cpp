@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "variant.h"
+#include "slice.h"
 #include "object.h"
 #include "os/os.h"
 #include "core_string_names.h"
@@ -1638,7 +1639,7 @@ _VariantCall::addfunc(Variant::m_vtype,Variant::m_ret,_SCS(#m_method),VCALL(m_cl
 
 	_VariantCall::add_constructor(_VariantCall::Image_init1,Variant::IMAGE,"width",Variant::INT,"height",Variant::INT,"mipmaps",Variant::BOOL,"format",Variant::INT);
 
-	_VariantCall::add_constructor(_VariantCall::Slice_init3, Variant::SLICE,"start",Variant::INT,"stop",Variant::INT,"step",Variant::INT);
+	_VariantCall::add_constructor(_VariantCall::Slice_init3, Variant::SLICE,"start",Variant::NIL,"stop",Variant::NIL,"step",Variant::NIL);
 
 	/* REGISTER CONSTANTS */
 

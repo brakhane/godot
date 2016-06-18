@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "variant.h"
+#include "slice.h"
 #include "resource.h"
 #include "print_string.h"
 #include "scene/main/node.h"
@@ -2632,7 +2633,10 @@ Variant::Variant(const Slice& p_slice) {
 
 	type=SLICE;
     _data._slice = memnew( Slice(p_slice) );
-	printf("this %p slice is %p with start,stop,step=%i,%i,%i***\n", this, _data._slice, _data._slice->start, _data._slice->stop, _data._slice->step);
+	printf("this %p slice is %p with start,stop,step=%i,%i,%i***\n", this, _data._slice,
+		   int(_data._slice->start),
+		   int(_data._slice->stop),
+		   int(_data._slice->step));
 }
 
 void Variant::operator=(const Variant& p_variant) {

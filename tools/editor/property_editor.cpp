@@ -45,6 +45,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/main/viewport.h"
 #include "editor_file_system.h"
+#include "slice.h"
 
 void CustomPropertyEditor::_notification(int p_what) {
 
@@ -3274,7 +3275,7 @@ void PropertyEditor::update_tree() {
 				item->set_editable( 1, true );
 				Variant v = obj->get(p.name);
 				Slice s = v;
-				item->set_text(1,"Slice("+itos(s.start)+", "+itos(s.stop)+", "+itos(s.step)+")");
+				item->set_text(1,"Slice(" + String(s.start) + ", " + String(s.stop) + ", " + String(s.step) + ")");
 			} break;
 			case Variant::VECTOR2: {
 

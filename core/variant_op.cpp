@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "variant.h"
+#include "slice.h"
 #include "object.h"
 #include "script_language.h"
 #include "core_string_names.h"
@@ -45,9 +46,27 @@ class _VariantOp {
 	}
 
 	template<typename T>
-	static void set_val(T& obj, const Variant index, const Variant& value, bool& valid) {
+	static void set_val(T& obj, const Variant& index, const Variant& value, bool& valid) {
 		obj.set(index, value);
 		valid=true;
+	}
+
+	static int convert_slice_part(const Variant& part, int default_value, bool& failed, String* err_text) {
+		switch(part.type) {
+			case Variant::NIL: {
+				return default_value;
+			}
+			case Variant::INT:
+			case Variant::REAL: {
+				return int(part);
+			}
+			default:
+				if (err_text) {
+					*err_text = "invalid element type " + Variant::get_type_name(part.type) + " in slice";
+				}
+				failed = true;
+				return 0;
+		}
 	}
 
 public:
@@ -72,18 +91,29 @@ public:
 				Slice slice = p_index;
 
 				int len = arr->size();
-				int start = slice.start;
-				int stop = slice.stop;
-				int step = slice.step;
+
+				bool failed = false;
+
+				int start = convert_slice_part(slice.start, 0, failed, err_text);
+				int stop = convert_slice_part(slice.stop, len, failed, err_text);
+				int step = convert_slice_part(slice.step, 1, failed, err_text);
+
+				if (failed) {
+					valid = false;
+					return Variant();
+				}
+
 				if (start<0)
 					start += len;
 				if (stop<0)
 					stop += len;
+				if (stop>len) {
+					stop = len;
+				}
 
 				int count = (stop - start + step - 1) / step;
 				if (count<0)
 					count = 0;
-
 
 				T res = _create_instance<T>();
 				res.resize(count);
@@ -95,7 +125,9 @@ public:
 				}
 				return res;
 			} break;
-		default: break;
+
+			default:
+				break;
 		}
 		return Variant();
 	}
@@ -157,11 +189,13 @@ public:
 					}
 				}
 			} break;
-		default: break;
+			default: break;
 		}
 	}
 
 };
+
+// specializations for _VariantOp
 
 template<>
 _FORCE_INLINE_ Array _VariantOp::_create_instance() {
@@ -174,7 +208,7 @@ _FORCE_INLINE_ Variant _VariantOp::get_val(const String& str, const Variant& ind
 }
 
 template<>
-void _VariantOp::set_val(String& str, const Variant index, const Variant& value, bool& valid) {
+void _VariantOp::set_val(String& str, const Variant& index, const Variant& value, bool& valid) {
 	int idx = index;
 	String chr;
 	if (value.type==Variant::INT || value.type==Variant::REAL) {
@@ -189,6 +223,7 @@ void _VariantOp::set_val(String& str, const Variant index, const Variant& value,
 	str = str.substr(0,idx)+chr+str.substr(idx+1, str.length());
 }
 
+// end specializations
 
 Variant::operator bool() const {
 

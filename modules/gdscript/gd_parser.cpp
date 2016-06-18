@@ -831,16 +831,31 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 				op->op=OperatorNode::OP_INDEX;
 				tokenizer->advance(1);
 
-				Node* subexpr = _parse_expression(op,p_static);
 
-				// possible slice indexing (array[start:stop:step])
+				Node* subexpr = NULL;
+
+				// might be slice indexing with missing first arg (array[:stop:step])
+				if (tokenizer->get_token() != GDTokenizer::TK_COLON) {
+					subexpr = _parse_expression(op,p_static);
+				}
+
+				// possible slice indexing (array[(start):stop:step])
 				if (tokenizer->get_token() == GDTokenizer::TK_COLON) {
 					SliceNode *slice = alloc_node<SliceNode>();
 
 					slice->elements[0] = subexpr;
 					for(int i=1; i<3 && tokenizer->get_token() == GDTokenizer::TK_COLON; i++) {
 						tokenizer->advance();
-						slice->elements[i] = _parse_expression(op, p_static); // may be NULL
+						if (tokenizer->get_token() != GDTokenizer::TK_COLON && tokenizer->get_token() != GDTokenizer::TK_BRACKET_CLOSE) {
+							slice->elements[i] = _parse_expression(op, p_static);
+						}
+					}
+					// fill missing values with null
+					for (int i=0; i<3; i++) {
+						if (!slice->elements[i]) {
+							ConstantNode *null_const = alloc_node<ConstantNode>();
+							slice->elements[i] = null_const;
+						}
 					}
 					subexpr = slice;
 				} else if (!subexpr) {
