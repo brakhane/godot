@@ -36,19 +36,73 @@
 class _VariantOp {
 
 	template<typename T>
-	static _FORCE_INLINE_ T _create_instance() {
+	static _FORCE_INLINE_ T create_instance() {
 		return T();
-	};
-
-	template<typename T>
-	static Variant get_val(const T& obj, const Variant& index) {
-		return obj.get(index);
 	}
 
 	template<typename T>
-	static void set_val(T& obj, const Variant& index, const Variant& value, bool& valid) {
-		obj.set(index, value);
-		valid=true;
+	static Variant get_index_from_obj(T* arr, const int index) {
+		return arr->get(index);
+	}
+
+	static Variant get_index_from_obj(String* str, const int index) {
+		return str->substr(index, 1);
+	}
+
+
+	static Variant get_slice_from_obj(const Array* arr, const int start, const int stop, const int step, const int count) {
+		Array res(true);
+		res.resize(count);
+
+		for (int i=start, o=0; i<stop; i += step, o += 1) {
+			res[o] = (*arr)[i];
+		}
+		return res;
+	}
+
+	template<typename T>
+	static Variant get_slice_from_obj(const DVector<T>* obj, const int start, const int stop, const int step, const int count) {
+		DVector<T> res;
+		res.resize(count);
+
+		typename DVector<T>::Write write = res.write();
+		typename DVector<T>::Read read = obj->read();
+
+		for (int i=start, o=0; i<stop; i += step, o += 1) {
+			write[o] = read[i];
+		}
+		return res;
+	}
+
+	static Variant get_slice_from_obj(const String* str, const int start, const int stop, const int step, const int count) {
+		if (step == 1) {
+			return str->substr(start, count);
+		} else {
+			String res;
+			res.resize(count);
+
+			for (int i=start, o=0; i < stop; i += step, o += 1) {
+				res += str->substr(i, 1);
+			}
+			return res;
+		}
+	}
+
+	static void set_slice_on_obj(Array* arr, const Array& values,
+								 const int start, const int stop, const int step) {
+		for(int i=start, o=0; i<stop; i += step, o += 1) {
+			(*arr)[i] = values.get(o);
+		}
+	}
+
+	template<typename T>
+	static void set_slice_on_obj(DVector<T>* dvec, const DVector<T>& values,
+								 const int start, const int stop, const int step) {
+		typename DVector<T>::Write write = dvec->write();
+		for(int i=start, o=0; i<stop; i += step, o += 1) {
+			write[i] = values.get(o);
+		}
+
 	}
 
 	static int convert_slice_part(const Variant& part, int default_value, bool& failed, String* err_text) {
@@ -69,9 +123,14 @@ class _VariantOp {
 		}
 	}
 
+	template<typename T>
+	static T* get_ptr(Variant& variant) {
+		return reinterpret_cast<T*>(variant._data._mem);
+	}
+
 public:
 	template <typename T>
-	static Variant get_array(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
+	static Variant get_index(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
@@ -82,7 +141,7 @@ public:
 					index += arr->size();
 				if (index>=0 && index<arr->size()) {
 					valid=true;
-					return get_val(*arr, index);
+					return arr->get(index);
 				}
 			} break;
 
@@ -103,26 +162,23 @@ public:
 					return Variant();
 				}
 
-				if (start<0)
+				if (start < 0)
 					start += len;
-				if (stop<0)
+				if (stop < 0)
 					stop += len;
-				if (stop>len) {
+				if (start > len) {
+					start = len;
+				}if (stop > len) {
 					stop = len;
 				}
 
 				int count = (stop - start + step - 1) / step;
-				if (count<0)
-					count = 0;
-
-				T res = _create_instance<T>();
-				res.resize(count);
-				// TODO: Write object
-				for (int i=start, o=0; i<stop; i += step, o += 1) {
-					set_val(res, Variant(o), (*arr)[i], valid);
-					if (!valid)
-						return Variant();
+				if (count<=0) {
+					valid = true; // out of bounds is valid, but returns an empty array;
+					return Variant(create_instance<T>());
 				}
+
+				Variant res = get_slice_from_obj(arr, start, stop, step, count);
 				return res;
 			} break;
 
@@ -133,7 +189,7 @@ public:
 	}
 
 	template <typename T>
-	static void set_array(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
+	static void set_index(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
@@ -145,7 +201,8 @@ public:
 				if (index<0)
 					index += arr->size();
 				if (index>=0 && index<arr->size()) {
-					set_val(*arr, Variant(index), p_value, valid);
+					arr->set(index, p_value);
+					valid = true;
 				}
 			} break;
 
@@ -161,18 +218,33 @@ public:
 				Slice slice = p_index;
 				T values = p_value;
 
-				int len = arr->size();
-				int start = slice.start;
-				int stop = slice.stop;
-				int step = slice.step;
-				if (start<0)
+				bool failed = false;
+
+				int len = (reinterpret_cast<T*>(variant._data._mem))->size();
+
+				int start = convert_slice_part(slice.start, 0, failed, err_text);
+				int stop = convert_slice_part(slice.stop, len, failed, err_text);
+				int step = convert_slice_part(slice.step, 1, failed, err_text);
+
+				if (failed) {
+					valid = false;
+					break;
+				}
+
+				if (start < 0)
 					start += len;
-				if (stop<0)
+				if (stop < 0)
 					stop += len;
 
+				if (start > len)
+					start = len;
+				if (stop > len)
+					stop = len;
+
 				int count = (stop - start + step - 1) / step;
-				if (count<0)
+				if (count < 0) {
 					count = 0;
+				}
 
 				if (values.size() != count) {
 					if (err_text)
@@ -180,14 +252,8 @@ public:
 					return;
 				}
 
-				if (start>=0 && start<len &&
-					stop>=0 && stop<len) {
-					for(int i=start, o=0; i<stop; i += step, o += 1) {
-						set_val(*arr, i, values.get(o), valid);
-						if (!valid)
-							break;
-					}
-				}
+				set_slice_on_obj(arr, values, start, stop, step);
+
 			} break;
 			default: break;
 		}
@@ -196,31 +262,9 @@ public:
 };
 
 // specializations for _VariantOp
-
 template<>
-_FORCE_INLINE_ Array _VariantOp::_create_instance() {
+inline Array _VariantOp::create_instance() {
 	return Array(true);
-}
-
-template<>
-_FORCE_INLINE_ Variant _VariantOp::get_val(const String& str, const Variant& index) {
-	return str.substr(index, 1);
-}
-
-template<>
-void _VariantOp::set_val(String& str, const Variant& index, const Variant& value, bool& valid) {
-	int idx = index;
-	String chr;
-	if (value.type==Variant::INT || value.type==Variant::REAL) {
-		chr = String::chr(value);
-	} else if (value.type==Variant::STRING) {
-		chr = value;
-	} else {
-		valid = false;
-		return;
-	}
-	valid = true;
-	str = str.substr(0,idx)+chr+str.substr(idx+1, str.length());
 }
 
 // end specializations
@@ -1173,7 +1217,7 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 #define DEFAULT_OP_ARRAY_GET(m_name, m_type, skip_test, cmd)	\
 	case m_name: {												\
 		skip_test;												\
-		Variant v = _VariantOp::get_array<m_type>(*this, valid, p_index, err_text); \
+		Variant v = _VariantOp::get_index<m_type>(*this, valid, p_index, err_text); \
 		return v;												\
     } break;
 
@@ -1183,7 +1227,7 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 #define DEFAULT_OP_ARRAY_SET(m_name, m_type, skip_test, cmd)	\
 	case m_name: {												\
 		skip_test;												\
-		_VariantOp::set_array<m_type>(*this, valid, p_index, p_value, err_text);	\
+		_VariantOp::set_index<m_type>(*this, valid, p_index, p_value, err_text);	\
 	} break;
 
 
@@ -1204,8 +1248,6 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 		case INT: {  return;  } break;
 		case REAL: {  return;  } break;
 		case STRING: {
-
-			/*
 			if (p_index.type!=Variant::INT && p_index.type!=Variant::REAL)
 				return;
 
@@ -1230,9 +1272,6 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 
 			*str = str->substr(0,idx)+chr+str->substr(idx+1, len);
 			valid=true;
-			return;
-			*/
-			_VariantOp::set_array<String>(*this, valid, p_index, p_value, err_text);
 			return;
 		} break;
 		case VECTOR2: {
@@ -2051,22 +2090,7 @@ Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) co
 		case INT: {  return Variant();  } break;
 		case REAL: {  return Variant();  } break;
 		case STRING: {
-			/*
-			if (p_index.get_type()==Variant::INT || p_index.get_type()==Variant::REAL) {
-				//string index
-
-				int idx=p_index;
-				const String *str=reinterpret_cast<const String*>(_data._mem);
-				if (idx<0)
-					idx += str->length();
-				if (idx >=0 && idx<str->length()) {
-
-					valid=true;
-					return str->substr(idx,1);
-				}
-			}
-			*/
-			return _VariantOp::get_array<String>(*this, valid, p_index, err_text);
+			return _VariantOp::get_index<String>(*this, valid, p_index, err_text);
 		} break;
 		case VECTOR2: {
 
