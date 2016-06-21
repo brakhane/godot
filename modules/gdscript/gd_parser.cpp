@@ -503,7 +503,7 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 		} else if (/*tokenizer->get_token()==GDTokenizer::TK_OP_ADD ||*/ tokenizer->get_token()==GDTokenizer::TK_OP_SUB || tokenizer->get_token()==GDTokenizer::TK_OP_NOT || tokenizer->get_token()==GDTokenizer::TK_OP_BIT_INVERT) {
 
 			//single prefix operators like !expr -expr ++expr --expr
-			OperatorNode *op = alloc_node<OperatorNode>();
+			//OperatorNode *op = alloc_node<OperatorNode>();
 
 			Expression e;
 			e.is_op=true;
@@ -844,6 +844,7 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 					SliceNode *slice = alloc_node<SliceNode>();
 
 					slice->elements[0] = subexpr;
+
 					for(int i=1; i<3 && tokenizer->get_token() == GDTokenizer::TK_COLON; i++) {
 						tokenizer->advance();
 						if (tokenizer->get_token() != GDTokenizer::TK_COLON && tokenizer->get_token() != GDTokenizer::TK_BRACKET_CLOSE) {
@@ -857,6 +858,7 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 							slice->elements[i] = null_const;
 						}
 					}
+					printf("SLICE IS %p\n",slice);
 					subexpr = slice;
 				} else if (!subexpr) {
 					return NULL;

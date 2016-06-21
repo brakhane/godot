@@ -41,16 +41,16 @@ class _VariantOp {
 	}
 
 	template<typename T>
-	static Variant get_index_from_obj(T* arr, const int index) {
+	static inline Variant get_index_from_obj(T* arr, const int index) {
 		return arr->get(index);
 	}
 
-	static Variant get_index_from_obj(String* str, const int index) {
+	static inline Variant get_index_from_obj(String* str, const int index) {
 		return str->substr(index, 1);
 	}
 
 
-	static Variant get_slice_from_obj(const Array* arr, const int start, const int stop, const int step, const int count) {
+	static inline Variant get_slice_from_obj(const Array* arr, const int start, const int stop, const int step, const int count) {
 		Array res(true);
 		res.resize(count);
 
@@ -61,7 +61,7 @@ class _VariantOp {
 	}
 
 	template<typename T>
-	static Variant get_slice_from_obj(const DVector<T>* obj, const int start, const int stop, const int step, const int count) {
+	static inline Variant get_slice_from_obj(const DVector<T>* obj, const int start, const int stop, const int step, const int count) {
 		DVector<T> res;
 		res.resize(count);
 
@@ -74,7 +74,7 @@ class _VariantOp {
 		return res;
 	}
 
-	static Variant get_slice_from_obj(const String* str, const int start, const int stop, const int step, const int count) {
+	static inline Variant get_slice_from_obj(const String* str, const int start, const int stop, const int step, const int count) {
 		if (step == 1) {
 			return str->substr(start, count);
 		} else {
@@ -88,7 +88,7 @@ class _VariantOp {
 		}
 	}
 
-	static void set_slice_on_obj(Array* arr, const Array& values,
+	static inline void set_slice_on_obj(Array* arr, const Array& values,
 								 const int start, const int stop, const int step) {
 		for(int i=start, o=0; i<stop; i += step, o += 1) {
 			(*arr)[i] = values.get(o);
@@ -96,7 +96,7 @@ class _VariantOp {
 	}
 
 	template<typename T>
-	static void set_slice_on_obj(DVector<T>* dvec, const DVector<T>& values,
+	static inline void set_slice_on_obj(DVector<T>* dvec, const DVector<T>& values,
 								 const int start, const int stop, const int step) {
 		typename DVector<T>::Write write = dvec->write();
 		for(int i=start, o=0; i<stop; i += step, o += 1) {
@@ -105,7 +105,7 @@ class _VariantOp {
 
 	}
 
-	static int convert_slice_part(const Variant& part, int default_value, bool& failed, String* err_text) {
+	static inline int convert_slice_part(const Variant& part, int default_value, bool& failed, String* err_text) {
 		switch(part.type) {
 			case Variant::NIL: {
 				return default_value;
@@ -124,13 +124,11 @@ class _VariantOp {
 	}
 
 	template<typename T>
-	static T* get_ptr(Variant& variant) {
-		return reinterpret_cast<T*>(variant._data._mem);
-	}
+	static inline bool is_valid_value_type(Variant::Type type);
 
 public:
 	template <typename T>
-	static Variant get_index(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
+	static inline Variant get_index(const Variant& variant, bool& valid, const Variant& p_index, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
@@ -172,9 +170,11 @@ public:
 					stop = len;
 				}
 
+				valid = true;
+
 				int count = (stop - start + step - 1) / step;
 				if (count<=0) {
-					valid = true; // out of bounds is valid, but returns an empty array;
+					// out of bounds is valid, but returns an empty array;
 					return Variant(create_instance<T>());
 				}
 
@@ -189,13 +189,15 @@ public:
 	}
 
 	template <typename T>
-	static void set_index(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
+	static inline void set_index(Variant& variant, bool& valid, const Variant& p_index, const Variant& p_value, String* err_text) {
 		switch(p_index.get_type()) {
 			case Variant::INT:
 			case Variant::REAL: {
 
-				int index = p_index;
+				if (!is_valid_value_type<T>(p_value.type))
+					break;
 
+				int index = p_index;
 				T* arr = reinterpret_cast<T*>(variant._data._mem);
 
 				if (index<0)
@@ -253,7 +255,7 @@ public:
 				}
 
 				set_slice_on_obj(arr, values, start, stop, step);
-
+				valid = true;
 			} break;
 			default: break;
 		}
@@ -266,6 +268,15 @@ template<>
 inline Array _VariantOp::create_instance() {
 	return Array(true);
 }
+
+template<> inline bool _VariantOp::is_valid_value_type<Array>(Variant::Type) { return true; }
+template<> inline bool _VariantOp::is_valid_value_type<ByteArray>(Variant::Type type) { return type == Variant::INT || type == Variant::REAL; }
+template<> inline bool _VariantOp::is_valid_value_type<IntArray>(Variant::Type type) { return type == Variant::INT || type == Variant::REAL; }
+template<> inline bool _VariantOp::is_valid_value_type<RealArray>(Variant::Type type) { return type == Variant::INT || type == Variant::REAL; }
+template<> inline bool _VariantOp::is_valid_value_type<StringArray>(Variant::Type type) { return type == Variant::STRING; }
+template<> inline bool _VariantOp::is_valid_value_type<Vector2Array>(Variant::Type type) { return type == Variant::VECTOR2; }
+template<> inline bool _VariantOp::is_valid_value_type<Vector3Array>(Variant::Type type) { return type == Variant::VECTOR3; }
+template<> inline bool _VariantOp::is_valid_value_type<ColorArray>(Variant::Type type) { return type == Variant::COLOR; }
 
 // end specializations
 
@@ -1213,7 +1224,7 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 
 	return get(p_index.operator String(),r_valid);
 }
-
+/*
 #define DEFAULT_OP_ARRAY_GET(m_name, m_type, skip_test, cmd)	\
 	case m_name: {												\
 		skip_test;												\
@@ -1234,7 +1245,7 @@ Variant Variant::get_named(const StringName& p_index, bool *r_valid) const {
 #define DEFAULT_OP_DVECTOR_SET(m_name, dv_type, skip_cond)	    \
 	DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, ;, arr->set(index, p_value);return)
 //DEFAULT_OP_ARRAY_SET(m_name, DVector<dv_type>, if(skip_cond) return;, arr->set(index, p_value);return)
-
+*/
 void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid, String* err_text) {
 
 	static bool _dummy=false;
@@ -2063,7 +2074,16 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 			valid=true; //always valid, i guess? should this really be ok?
 			return;
 		} break;		// 20
-		DEFAULT_OP_ARRAY_SET(ARRAY, Array, ;, (*arr)[index]=p_value;return)
+		case ARRAY: return _VariantOp::set_index<Array>(*this, valid, p_index, p_value, err_text);
+		case RAW_ARRAY: return _VariantOp::set_index<ByteArray>(*this, valid, p_index, p_value, err_text);
+		case INT_ARRAY: return _VariantOp::set_index<IntArray>(*this, valid, p_index, p_value, err_text);
+		case REAL_ARRAY: return _VariantOp::set_index<RealArray>(*this, valid, p_index, p_value, err_text);
+		case STRING_ARRAY: return _VariantOp::set_index<StringArray>(*this, valid, p_index, p_value, err_text);
+		case VECTOR2_ARRAY: return _VariantOp::set_index<Vector2Array>(*this, valid, p_index, p_value, err_text);
+		case VECTOR3_ARRAY: return _VariantOp::set_index<Vector3Array>(*this, valid, p_index, p_value, err_text);
+		case COLOR_ARRAY: return _VariantOp::set_index<ColorArray>(*this, valid, p_index, p_value, err_text);
+
+			/*DEFAULT_OP_ARRAY_SET(ARRAY, Array, ;, (*arr)[index]=p_value;return)
 		DEFAULT_OP_DVECTOR_SET(RAW_ARRAY, uint8_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 		DEFAULT_OP_DVECTOR_SET(INT_ARRAY, int, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 		DEFAULT_OP_DVECTOR_SET(REAL_ARRAY, real_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
@@ -2071,7 +2091,7 @@ void Variant::set(const Variant& p_index, const Variant& p_value, bool *r_valid,
 		DEFAULT_OP_DVECTOR_SET(VECTOR2_ARRAY, Vector2, p_value.type != Variant::VECTOR2)
 		DEFAULT_OP_DVECTOR_SET(VECTOR3_ARRAY, Vector3, p_value.type != Variant::VECTOR3)
 		DEFAULT_OP_DVECTOR_SET(COLOR_ARRAY, Color, p_value.type != Variant::COLOR)
-		default: return;
+			*/default: return;
 	}
 
 }
@@ -2633,14 +2653,14 @@ Variant Variant::get(const Variant& p_index, bool *r_valid, String* err_text) co
 				return *res;
 			}
 		} break;		// 20
-		DEFAULT_OP_ARRAY_GET(ARRAY, Array, 0, return (*arr)[index])
-		DEFAULT_OP_DVECTOR_GET(RAW_ARRAY, uint8_t)
-		DEFAULT_OP_DVECTOR_GET(INT_ARRAY, int)
-		DEFAULT_OP_DVECTOR_GET(REAL_ARRAY, real_t)
-		DEFAULT_OP_DVECTOR_GET(STRING_ARRAY, String)
-		DEFAULT_OP_DVECTOR_GET(VECTOR2_ARRAY, Vector2)
-		DEFAULT_OP_DVECTOR_GET(VECTOR3_ARRAY, Vector3)
-		DEFAULT_OP_DVECTOR_GET(COLOR_ARRAY, Color)
+		case ARRAY: return _VariantOp::get_index<Array>(*this, valid, p_index, err_text);
+		case RAW_ARRAY: return _VariantOp::get_index<ByteArray>(*this, valid, p_index, err_text);
+		case INT_ARRAY: return _VariantOp::get_index<IntArray>(*this, valid, p_index, err_text);
+		case REAL_ARRAY: return _VariantOp::get_index<RealArray>(*this, valid, p_index, err_text);
+		case STRING_ARRAY: return _VariantOp::get_index<StringArray>(*this, valid, p_index, err_text); //25
+		case VECTOR2_ARRAY: return _VariantOp::get_index<Vector2Array>(*this, valid, p_index, err_text);
+		case VECTOR3_ARRAY: return _VariantOp::get_index<Vector3Array>(*this, valid, p_index, err_text);
+		case COLOR_ARRAY: return _VariantOp::get_index<ColorArray>(*this, valid, p_index, err_text);
 		case SLICE: {
 			if (p_index.get_type() == Variant::STRING) {
 				const String &str=*reinterpret_cast<const String*>(p_index._data._mem);

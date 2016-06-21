@@ -288,7 +288,7 @@ public:
 
 	struct SliceNode : public Node {
 		Node* elements[3]; // start, stop, step
-		SliceNode() { type=TYPE_SLICE; }
+		SliceNode(): elements() { type=TYPE_SLICE;}
 	};
 
 	struct Expression {

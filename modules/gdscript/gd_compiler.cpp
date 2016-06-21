@@ -361,6 +361,7 @@ int GDCompiler::_parse_expression(CodeGen& codegen,const GDParser::Node *p_expre
 
 			for(int i=0; i<3; i++) {
 
+				printf("GOT %p %p i:%d [i]:%p\n",sn, sn->elements, i, sn->elements[i]);
 				int ret = _parse_expression(codegen, sn->elements[i], slevel);
 				if (ret<0)
 					return ret;
