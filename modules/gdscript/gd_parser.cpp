@@ -846,7 +846,7 @@ GDParser::Node* GDParser::_parse_expression(Node *p_parent,bool p_static,bool p_
 
 				// might be slice indexing with missing first arg (array[:stop:step])
 				if (tokenizer->get_token() != GDTokenizer::TK_COLON) {
-					subexpr = _parse_expression(op,p_static,p_allow,p_parsing_constant);
+					subexpr = _parse_expression(op, p_static, p_allow_assign, p_parsing_constant);
 				}
 
 				// possible slice indexing (array[(start):stop:step])

@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "globals.h"
+#include "slice.h"
 #include "os/dir_access.h"
 #include "os/file_access.h"
 
@@ -951,7 +952,8 @@ static String _encode_variant(const Variant& p_variant) {
 			return str;
 		} break;
 		case Variant::SLICE: {
-			throw 42;
+			Slice slice = p_variant;
+			return String("Slice("+String(slice.start)+","+String(slice.stop)+String(slice.step)+")");
 		}
 		case Variant::DICTIONARY: {
 			Dictionary d = p_variant;

@@ -27,6 +27,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "marshalls.h"
+#include "slice.h"
 #include "print_string.h"
 #include "os/keyboard.h"
 #include <stdio.h>
@@ -785,15 +786,32 @@ Error decode_variant(Variant& r_variant,const uint8_t *p_buffer, int p_len,int *
 
 		} break;
 		case Variant::SLICE: {
-			ERR_FAIL_COND_V(len<3*4, ERR_INVALID_DATA);
-			uint32_t start = decode_uint32(buf);
-			uint32_t stop = decode_uint32(buf+4);
-			uint32_t step = decode_uint32(buf+8);
-			buf += 3*4;
-			len -= 3*4;
-			//FIXME
-			//Slice slice(start, stop, step);
-			//r_variant = slice;
+			ERR_FAIL_COND_V(len<1, ERR_INVALID_DATA);
+			uint8_t set_flag = *buf;
+			Variant start, stop, step;
+
+			buf += 1;
+			len -= 1;
+			if (set_flag & 1) {
+				ERR_FAIL_COND_V(len<4, ERR_INVALID_DATA);
+				start = (int32_t)decode_uint32(buf);
+				buf += 4;
+				len -= 4;
+			}
+			if (set_flag & 2) {
+				ERR_FAIL_COND_V(len<4, ERR_INVALID_DATA);
+				stop = (int32_t)decode_uint32(buf);
+				buf += 4;
+				len -= 4;
+			}
+			if (set_flag & 4) {
+				ERR_FAIL_COND_V(len<4, ERR_INVALID_DATA);
+				step = (int32_t)decode_uint32(buf);
+				buf += 4;
+				len -= 4;
+			}
+			Slice slice(start, stop, step);
+			r_variant = slice;
 		} break;
 		default: { ERR_FAIL_V(ERR_BUG); }
 	}
@@ -1420,15 +1438,32 @@ Error encode_variant(const Variant& p_variant, uint8_t *r_buffer, int &r_len) {
 
 		} break;
 		case Variant::SLICE: {
-			//FIXME
-			/*Slice slice = p_variant;
+			Slice slice = p_variant;
 			if (buf) {
-				//FIXME: must be signed and support NIL
-				encode_uint32(slice.start, &buf[0]);
-				encode_uint32(slice.stop, &buf[4]);
-				encode_uint32(slice.step, &buf[8]);
-				}*/
-			r_len += 3*4;
+				uint8_t set_flags = 0;
+				if (slice.start.get_type() != Variant::NIL)
+					set_flags |= 1;
+				if (slice.start.get_type() != Variant::NIL)
+					set_flags |= 2;
+				if (slice.start.get_type() != Variant::NIL)
+					set_flags |= 4;
+
+				buf[0] = set_flags;
+				int p = 1;
+				if (set_flags & 1) {
+					encode_uint32(slice.start, &buf[p]);
+					p += 4;
+				}
+				if (set_flags & 2) {
+					encode_uint32(slice.stop, &buf[p]);
+					p += 4;
+				}
+				if (set_flags & 4) {
+					encode_uint32(slice.step, &buf[p]);
+					p += 4;
+				}
+				r_len += p;
+			}
 		} break;
 		default: { ERR_FAIL_V(ERR_BUG); }
 	}
